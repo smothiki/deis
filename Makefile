@@ -130,8 +130,20 @@ status: check-fleet
 stop: check-fleet
 	$(FLEETCTL) stop $(call deis_units,loaded,.)
 
-tests:
-	cd test && bundle install && bundle exec rake
+test: test-unit test-integration
+
+test-unit:
+	# $(MAKE) -C builder/ test
+	# $(MAKE) -C cache/ test
+	$(MAKE) -C controller/ test
+	# $(MAKE) -C database/ test
+	# $(MAKE) -C docs/ test
+	$(MAKE) -C logger/ test
+	# $(MAKE) -C registry/ test
+	# $(MAKE) -C router/ test
+
+test-integration: stop clean pull build run
+	$(MAKE) -C test/ test
 
 uninstall: check-fleet stop
 	$(FLEETCTL) destroy $(call deis_units,loaded,.)

@@ -26,3 +26,6 @@ clean: uninstall
 
 full-clean: clean
 	vagrant ssh -c 'sudo docker rmi deis/logger'
+
+test:
+	go test -v ./...
