@@ -61,7 +61,7 @@ SSHD_PID=$!
 
 # smart shutdown on SIGINT and SIGTERM
 function on_exit() {
-	kill -TERM $DOCKER_PID $SSHD_PID
+	kill -TERM $DOCKER_PID $SSHD_PID 2>/dev/null
 	wait $DOCKER_PID $SSHD_PID 2>/dev/null
 }
 trap on_exit INT TERM EXIT

@@ -31,6 +31,13 @@ RUN pip install celery==3.1.11 \
 # install openssh-client for temporary fleetctl wrapper
 RUN apt-get install -yq openssh-client
 
+# install docker in docker deps
+RUN apt-get install -yq aufs-tools iptables ca-certificates lxc
+RUN echo "deb http://get.docker.io/ubuntu docker main" > /etc/apt/sources.list.d/docker.list
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 36A1D7869245C8950F966E92D8576A8BA88D21E9
+RUN apt-get update -qy
+RUN apt-get install -yq lxc-docker-0.11.1
+
 # install latest etcdctl including no-sync options
 RUN wget -q https://s3-us-west-2.amazonaws.com/deis/etcdctl.no-sync -O /usr/local/bin/etcdctl
 RUN chmod +x /usr/local/bin/etcdctl
@@ -45,7 +52,7 @@ RUN pip install -r /app/requirements.txt
 RUN /app/manage.py collectstatic --settings=deis.settings --noinput
 
 # add a deis user that has passwordless sudo (for now)
-RUN useradd deis --groups sudo --home-dir /app --shell /bin/bash
+RUN useradd deis --groups sudo,docker --home-dir /app --shell /bin/bash
 RUN sed -i -e 's/%sudo\tALL=(ALL:ALL) ALL/%sudo\tALL=(ALL:ALL) NOPASSWD:ALL/' /etc/sudoers
 RUN chown -R deis:deis /app
 
@@ -56,6 +63,8 @@ RUN mkdir -p /templates && chown -R deis:deis /templates
 RUN mkdir -p /var/log/deis && chown -R deis:deis /var/log/deis
 
 # define the execution environment
+VOLUME /var/lib/docker
 WORKDIR /app
+ENTRYPOINT ["/app/bin/entry"]
 CMD ["/app/bin/boot"]
 EXPOSE 8000

@@ -468,14 +468,14 @@ class Release(UuidAuditedModel):
         # prepare release tag
         new_version = self.version + 1
         tag = 'v{}'.format(new_version)
-        image = build.image + ':{tag}'.format(**locals())
+        release_image = self.app.id + ':{tag}'.format(**locals())
+        target_image = '{}:{}/{}'.format(settings.REGISTRY_HOST, settings.REGISTRY_PORT, release_image)
         # create new release and auto-increment version
         release = Release.objects.create(
             owner=user, app=self.app, config=config,
-            build=build, version=new_version, image=image, summary=summary)
+            build=build, version=new_version, image=target_image, summary=summary)
         # publish release to registry as new docker image
-        repository_path = self.app.id
-        publish_release(repository_path, config.values, tag)
+        publish_release(build.image, config.values, release_image)
         return release
 
     def previous(self):

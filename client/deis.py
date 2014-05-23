@@ -1490,6 +1490,7 @@ SHORTCUTS = OrderedDict([
     ('create', 'apps:create'),
     ('destroy', 'apps:destroy'),
     ('init', 'clusters:create'),
+    ('build', 'builds:create'),
     ('info', 'apps:info'),
     ('run', 'apps:run'),
     ('open', 'apps:open'),
