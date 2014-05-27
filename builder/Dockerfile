@@ -50,6 +50,10 @@ RUN chmod +x /usr/local/bin/confd
 RUN wget -q https://s3-us-west-2.amazonaws.com/deis/etcdctl.no-sync -O /usr/local/bin/etcdctl
 RUN chmod +x /usr/local/bin/etcdctl
 
+# HACK: import progrium/cedarish as a tarball
+# see https://github.com/deis/deis/issues/1027
+ADD https://s3-us-west-2.amazonaws.com/opdemand/progrium_cedarish_2014.05.27.tar /progrium_cedarish.tar
+
 # add the current build context to /app
 ADD . /app
 RUN chown -R root:root /app
