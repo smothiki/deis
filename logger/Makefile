@@ -25,3 +25,10 @@ clean: uninstall
 
 full-clean: clean
 	$(call ssh_all,'sudo docker rmi deis/logger')
+
+test:
+	go test -v -cover ./syslog
+
+coverage:
+	go test -coverprofile coverage.out ./syslog
+	go tool cover -html=coverage.out
