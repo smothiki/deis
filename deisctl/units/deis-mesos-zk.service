@@ -1,0 +1,16 @@
+[Unit]
+Description=deis-mesos-zk
+
+[Service]
+EnvironmentFile=/etc/environment
+TimeoutStartSec=20m
+ExecStartPre=/bin/sh -c "docker inspect deis-mesos-zk-data >/dev/null 2>&1 || docker run --name deis-mesos-zk-data -v /tmp/zookeeper ubuntu-debootstrap:14.04 /bin/true"
+ExecStartPre=/bin/sh -c "IMAGE=`/run/deis/bin/get_image /deis/mesos-zk` && docker history $IMAGE >/dev/null || docker pull $IMAGE"
+ExecStartPre=/bin/sh -c "docker inspect deis-mesos-zk >/dev/null 2>&1 && docker rm -f deis-mesos-zk >/dev/null 2>&1 || true"
+ExecStart=/bin/sh -c "IMAGE=`/run/deis/bin/get_image /deis/mesos-zk` && docker run --name deis-mesos-zk --volumes-from=deis-mesos-zk-data -p 2181:2181 -p 2888:2888 -p 3888:3888 -e HOST=$COREOS_PRIVATE_IPV4 $IMAGE /go/bin/zk"
+ExecStopPost=-/usr/bin/docker rm -f deis-mesos-zk
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

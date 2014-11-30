@@ -1,0 +1,11 @@
+#FROM is generated dynamically by the Makefile
+
+RUN apt-get update && apt-get install -yq golang git mercurial
+
+ENV GOPATH /go
+WORKDIR /go/src/github.com/deis/deis/mesos/master
+ENTRYPOINT ["/bin/sh", "-c"]
+CMD /go/bin/master
+
+ADD . /go/src/github.com/deis/deis/mesos/master
+RUN CGO_ENABLED=0 go get -a -ldflags '-s' github.com/deis/deis/mesos/master

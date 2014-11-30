@@ -12,6 +12,7 @@ django-json-field==0.5.7
 djangorestframework==2.4.4
 docker-py==0.6.0
 gunicorn==19.1.1
+git+https://github.com/gabrtv/marathon-python.git@update-types
 paramiko==1.14.1
 psycopg2==2.5.4
 python-etcd==0.3.2
