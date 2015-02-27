@@ -54,6 +54,41 @@ coreos:
       Type=oneshot
       ExecStart=/usr/bin/systemctl stop update-engine.service
       ExecStartPost=/usr/bin/systemctl mask update-engine.service
+  - name: flannel.service
+    command: start
+    content: |
+      [Unit]
+      Requires=etcd.service
+      After=etcd.service
+      After=network-online.target
+      Wants=network-online.target
+      Description=flannel is an etcd backed overlay network for containers
+
+      [Service]
+      Type=notify
+      ExecStartPre=-/usr/bin/mkdir -p /opt/bin
+      ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/k8s/flanneld
+      ExecStartPre=/usr/bin/chmod +x /opt/bin/flanneld
+      ExecStartPre=-/usr/bin/etcdctl mk /coreos.com/network/config '{"Network":"10.244.0.0/16", "Backend": {"Type": "vxlan"}}'
+      ExecStart=/opt/bin/flanneld --iface=eth1
+
+  - name: docker.service
+    command: start
+    content: |
+      [Unit]
+      After=flannel.service
+      Wants=flannel.service
+      Description=Docker Application Container Engine
+      Documentation=http://docs.docker.io
+
+      [Service]
+      EnvironmentFile=/run/flannel/subnet.env
+      ExecStartPre=/bin/mount --make-rprivate /
+      ExecStart=/usr/bin/docker -d --bip=${FLANNEL_SUBNET} --mtu=${FLANNEL_MTU} --insecure-registry 10.0.0.0/8 --insecure-registry 172.16.0.0/12 --insecure-registry 192.168.0.0/16 --insecure-registry 100.64.0.0/10 -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock
+
+      [Install]
+      WantedBy=multi-user.target
+
   - name: install-deisctl.service
     command: start
     content: |
