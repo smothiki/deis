@@ -4,9 +4,9 @@ Documentation=https://github.com/GoogleCloudPlatform/kubernetes
 
 [Service]
 EnvironmentFile=/etc/environment
-ExecStartPre=-/usr/bin/etcdctl mk /coreos.com/network/config '$COREOS_PRIVATE_IPV4'
+ExecStartPre=-/usr/bin/etcdctl mk /deis/scheduler/k8s/master '$COREOS_PRIVATE_IPV4'
 ExecStartPre=-/usr/bin/mkdir -p /opt/bin
-ExecStartPre=/bin/bash -c '/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/$(curl --insecure -sS https://get.k8s.io | grep release= | cut -f2 -d"=")/bin/linux/amd64/kube-apiserver'
+ExecStartPre=/bin/bash -c '/usr/bin/wget -N -P https://storage.googleapis.com/kubernetes-release/release/$(curl --insecure -sS https://get.k8s.io | grep release= | cut -f2 -d"=")/bin/linux/amd64/kube-apiserver'
 ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-apiserver
 ExecStart=/opt/bin/kube-apiserver \
 --address=0.0.0.0 \

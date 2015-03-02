@@ -7,7 +7,7 @@ EnvironmentFile=/etc/environment
 ExecStartPre=/bin/bash -c '/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/$(curl --insecure -sS https://get.k8s.io | grep release= | cut -f2 -d"=")/bin/linux/amd64/kube-proxy'
 ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-proxy
 ExecStart=/opt/bin/kube-proxy \
---etcd_servers=http://$COREOS_PRIVATE_IPV4:4001 \
+--etcd_servers=http://127.0.0.1:4001 \
 --logtostderr=true
 Restart=always
 RestartSec=10
