@@ -7,10 +7,11 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/coreos/go-etcd/etcd"
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 )
 
 const (
@@ -77,27 +78,70 @@ func (s *Server) getContainer(id string) (*docker.APIContainers, error) {
 
 // publishContainer publishes the docker container to etcd.
 func (s *Server) publishContainer(container *docker.APIContainers, ttl time.Duration) {
-	r := regexp.MustCompile(appNameRegex)
+
 	host := os.Getenv("HOST")
-	for _, name := range container.Names {
-		// HACK: remove slash from container name
-		// see https://github.com/docker/docker/issues/7519
-		containerName := name[1:]
-		match := r.FindStringSubmatch(containerName)
-		if match == nil {
+
+	// find the container name
+	appName, containerName, err := s.parseContainerName(container)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
+
+	keyPath := fmt.Sprintf("/deis/services/%s/%s", appName, containerName)
+
+	// publish ports to /deis/services keyspace
+	for _, p := range container.Ports {
+		port := strconv.Itoa(int(p.PublicPort))
+		if s.IsPublishableApp(containerName) {
+			s.setEtcd(keyPath, host+":"+port, uint64(ttl.Seconds()))
+		}
+		// TODO: support multiple exposed ports
+		break
+	}
+}
+
+// getContainerName returns the name of container
+func (s *Server) parseContainerName(container *docker.APIContainers) (string, string, error) {
+
+	// HACK: remove slash from container name
+	// see https://github.com/docker/docker/issues/7519
+	containerName := container.Names[0][1:]
+	appName := ""
+
+	// use container name if it matches the appNameRegex
+	// which implies we have control over container names
+	r := regexp.MustCompile(appNameRegex)
+	match := r.FindStringSubmatch(containerName)
+	if match != nil {
+		return appName, containerName, nil
+	}
+
+	// inspect container to get access to envvars
+	c, err := s.DockerClient.InspectContainer(containerName)
+	if err != nil {
+		return "", "", err
+	}
+
+	// use envvars in cases where we do not control container names
+	for _, kv := range c.Config.Env {
+		if !strings.HasPrefix(kv, "DEIS_") {
 			continue
 		}
-		appName := match[1]
-		keyPath := fmt.Sprintf("/deis/services/%s/%s", appName, containerName)
-		for _, p := range container.Ports {
-			port := strconv.Itoa(int(p.PublicPort))
-			if s.IsPublishableApp(containerName) {
-				s.setEtcd(keyPath, host+":"+port, uint64(ttl.Seconds()))
-			}
-			// TODO: support multiple exposed ports
-			break
+		if strings.HasPrefix(kv, "DEIS_ID=") {
+			containerName = strings.Split(kv, "DEIS_ID=")[1]
+		}
+		if strings.HasPrefix(kv, "DEIS_APP=") {
+			appName = strings.Split(kv, "DEIS_APP=")[1]
 		}
 	}
+
+	// return an error if they're empty
+	if appName == "" && containerName == "" {
+		return "", "", fmt.Errorf("could not find container ID")
+	}
+
+	return appName, containerName, nil
 }
 
 // IsPublishableApp determines if the application should be published to etcd.

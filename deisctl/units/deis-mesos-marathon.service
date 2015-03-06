@@ -1,0 +1,15 @@
+[Unit]
+Description=deis-mesos-marathon
+
+[Service]
+EnvironmentFile=/etc/environment
+TimeoutStartSec=20m
+ExecStartPre=/bin/sh -c "IMAGE=`/run/deis/bin/get_image /deis/mesos-marathon` && docker history $IMAGE >/dev/null || docker pull $IMAGE"
+ExecStartPre=/bin/sh -c "docker inspect deis-mesos-marathon >/dev/null 2>&1 && docker rm -f deis-mesos-marathon >/dev/null 2>&1 || true"
+ExecStart=/bin/sh -c "IMAGE=`/run/deis/bin/get_image /deis/mesos-marathon` && docker run --name deis-mesos-marathon --net=host -e HOST=$COREOS_PRIVATE_IPV4 $IMAGE /go/bin/marathon"
+ExecStopPost=-/usr/bin/docker rm -f deis-mesos-marathon
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

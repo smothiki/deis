@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 )
 
 type AttachManager struct {
@@ -45,7 +45,7 @@ func NewAttachManager(client *docker.Client) *AttachManager {
 func (m *AttachManager) attach(id string) {
 	container, err := m.client.InspectContainer(id)
 	assert(err, "attacher")
-	name := container.Name[1:]
+	name := m.containerName(id, container.Name[1:])
 	success := make(chan struct{})
 	failure := make(chan error)
 	outrd, outwr := io.Pipe()
@@ -75,6 +75,7 @@ func (m *AttachManager) attach(id string) {
 	}()
 	_, ok := <-success
 	if ok {
+		debug()
 		m.Lock()
 		m.attached[id] = NewLogPump(outrd, errrd, id, name)
 		m.Unlock()
@@ -84,6 +85,24 @@ func (m *AttachManager) attach(id string) {
 		return
 	}
 	debug("attach:", id, "failure:", <-failure)
+}
+
+func (m *AttachManager) containerName(id string, fallback string) string {
+
+	// inspect container to get access to envvars
+	c, err := m.client.InspectContainer(id)
+	if err != nil {
+		return fallback
+	}
+
+	// look for DEIS_ID
+	for _, kv := range c.Config.Env {
+		if strings.HasPrefix(kv, "DEIS_ID=") {
+			return strings.Split(kv, "DEIS_ID=")[1]
+		}
+	}
+
+	return fallback
 }
 
 func (m *AttachManager) send(event *AttachEvent) {

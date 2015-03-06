@@ -1,0 +1,16 @@
+[Unit]
+Description=deis-mesos-master
+
+[Service]
+EnvironmentFile=/etc/environment
+TimeoutStartSec=20m
+ExecStartPre=/bin/sh -c "docker inspect deis-mesos-master-data >/dev/null 2>&1 || docker run --name deis-mesos-master-data -v /tmp/mesos-master ubuntu-debootstrap:14.04 /bin/true"
+ExecStartPre=/bin/sh -c "IMAGE=`/run/deis/bin/get_image /deis/mesos-master` && docker history $IMAGE >/dev/null || docker pull $IMAGE"
+ExecStartPre=/bin/sh -c "docker inspect deis-mesos-master >/dev/null 2>&1 && docker rm -f deis-mesos-master >/dev/null 2>&1 || true"
+ExecStart=/bin/sh -c "IMAGE=`/run/deis/bin/get_image /deis/mesos-master` && docker run --name deis-mesos-master --net=host -e GLOG_v=1 --volumes-from=deis-mesos-master-data -e HOST=$COREOS_PRIVATE_IPV4 $IMAGE /go/bin/master"
+ExecStopPost=-/usr/bin/docker rm -f deis-mesos-master
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -14,7 +14,7 @@ docker-py==0.7.2
 gunicorn==19.2.1
 paramiko==1.15.2
 psycopg2==2.6
-python-etcd==0.3.2
+git+https://github.com/gabrtv/marathon-python.git@update-types
 PyYAML==3.11
 setproctitle==1.1.8
 static==1.1.1

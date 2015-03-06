@@ -1,0 +1,17 @@
+#FROM is generated dynamically by the Makefile
+
+RUN apt-get update && apt-get install -yq golang git mercurial
+
+# link to proper devmapper library version
+RUN ln -fs /lib/x86_64-linux-gnu/libdevmapper.so.1.02.1 /lib/x86_64-linux-gnu/libdevmapper.so.1.02
+
+# increase the executor timeout to account for the potential delay in pulling a docker image to the slave
+RUN echo '20mins' > /etc/mesos-slave/executor_registration_timeout
+
+ENV GOPATH /go
+WORKDIR /go/src/github.com/deis/deis/mesos/slave
+ENTRYPOINT ["/bin/sh", "-c"]
+CMD /go/bin/slave
+
+ADD . /go/src/github.com/deis/deis/mesos/slave
+RUN CGO_ENABLED=0 go get -a -ldflags '-s' github.com/deis/deis/mesos/slave

@@ -1,0 +1,18 @@
+[Unit]
+Description=deis-mesos-slave
+
+[Service]
+EnvironmentFile=/etc/environment
+TimeoutStartSec=20m
+ExecStartPre=/bin/sh -c "IMAGE=`/run/deis/bin/get_image /deis/mesos-slave` && docker history $IMAGE >/dev/null || docker pull $IMAGE"
+ExecStartPre=/bin/sh -c "docker inspect deis-mesos-slave >/dev/null 2>&1 && docker rm -f deis-mesos-slave >/dev/null 2>&1 || true"
+ExecStart=/bin/sh -c "IMAGE=`/run/deis/bin/get_image /deis/mesos-slave` && docker run --name deis-mesos-slave --net=host -e GLOG_v=2 --privileged -v /lib64/libdevmapper.so.1.02:/lib/libdevmapper.so.1.02:ro -v /var/run/docker.sock:/var/run/docker.sock -v /usr/bin/docker:/usr/bin/docker -v /sys:/sys -e HOST=$COREOS_PRIVATE_IPV4 $IMAGE /go/bin/slave"
+ExecStopPost=-/usr/bin/docker rm -f deis-mesos-slave
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
+[X-Fleet]
+Global=true
