@@ -47,7 +47,7 @@ class KubeHTTPClient():
 
     def create(self, name, image, command, **kwargs):
         l = {}
-        l["id"]=name
+        l["id"]=name.split("_")[0]
         l["version"]=self.apiversion
         l["image"]=self.registry+"/"+image
         template=string.Template(POD_TEMPLATE).substitute(l)
