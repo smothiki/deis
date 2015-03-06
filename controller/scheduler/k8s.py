@@ -32,6 +32,8 @@ POD_TEMPLATE = '''{
   }
 }'''
 
+RETRIES = 3
+
 class KubeHTTPClient():
 
     def __init__(self, target, auth, options, pkey):
@@ -52,11 +54,20 @@ class KubeHTTPClient():
         headers = {'Content-Type': 'application/json'}
         #http://172.17.8.100:8080/api/v1beta1/pods
         print copy.deepcopy(template)
-        self.conn.request('POST', '/api/'+self.apiversion+'/'+'pods',
+        for attempt in range(RETRIES):
+            try:
+                self.conn.request('POST', '/api/'+self.apiversion+'/'+'pods',
                           headers=headers, body=copy.deepcopy(template))
-        resp = self.conn.getresponse()
-        data = resp.read()
-        print data
+                resp = self.conn.getresponse()
+                data = resp.read()
+                if not 200 <= resp.status <= 299:
+                    errmsg = "Failed to retrieve unit: {} {} - {}".format(
+                        resp.status, resp.reason, data)
+                    raise RuntimeError(errmsg)
+                return data
+            except:
+                if attempt >= (RETRIES - 1):
+                    raise
 
     def start(self, name):
         """
