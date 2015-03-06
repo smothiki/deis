@@ -6,128 +6,48 @@ import httplib
 import re
 import time
 import string
+from django.conf import settings
 
-#
-# POD_TEMPLATE = '''{
-#   "id": "$id",
-#   "kind": "$pod",
-#   "apiVersion": "$version",
-#   "desiredState": {
-#     "manifest": {
-#     "version": "$version",
-#     "id": "$id",
-#     "containers": [{
-#       "name": "master",
-#       "image": "dockerfile/redis",
-#       "ports": [{
-#         "containerPort": 6371,
-#         "hostPort": 6371
-#       }]
-#     }]
-#     }
-#   },
-#   "labels": {
-#   "name": "$name"
-#   }
-# }'''
-POD_TEMPLATE ='''{
+POD_TEMPLATE = '''{
   "id": "$id",
   "kind": "Pod",
-  "apiVersion":"v1beta1",
-  "labels": {
-    "name": "valid-pod"
-  },
+  "apiVersion": "$version",
   "desiredState": {
     "manifest": {
-      "version": "v1beta1",
+      "version": "$version",
       "id": "$id",
       "containers": [{
-        "name": "kubernetes-serve-hostname",
-        "image": "kubernetes/serve_hostname",
-        "cpu": 1000,
-        "memory": 1048576,
+        "name": "$id",
+        "image": "$image",
+        "ports": [{
+          "containerPort": 80,
+          "hostPort": 80
+        }]
       }]
     }
   },
+  "labels": {
+    "name": "$id",
+    "environment": "testing"
+  }
 }'''
-
-# POD_TEMPLATE = '''{
-#   "annotations": "v1beta1.TypeMeta.annotations",
-#   "apiVersion": "$version",
-#   "creationTimestamp": "",
-#   "desiredState": {
-#     "host": "",
-#     "hostIP": "",
-#     "info": "v1beta1.PodInfo",
-#     "manifest": {
-#       "containers": [{
-#              "name": "master",
-#              "image": "dockerfile/redis",
-#              "ports": [{
-#                "containerPort": 6371,
-#                "hostPort": 6371
-#              }]
-#             }],
-#       "dnsPolicy": "v1beta1.DNSPolicy",
-#       "id": "$id",
-#       "uuid": "types.UID",
-#       "version": "$version",
-#       "volumes": [
-#         null
-#       ]
-#     },
-#     "message": "create pod test",
-#     "podIP": "",
-#     "status": "v1beta1.PodStatus"
-#   },
-#   "id": "$id",
-#   "kind": "$pod",
-#   "labels": {
-#      "name": "$name"
-#     },
-#   "namespace": "",
-#   "nodeSelector": {},
-#   "resourceVersion": "uint64",
-#   "selfLink": "",
-#   "uid": "types.UID"
-# }'''
 
 class KubeHTTPClient():
 
-      def __init__(self, ipaddr,port,apiversion):
-        self.ipaddr = ipaddr
-        self.port = port
-        self.apiversion = apiversion
-        self.conn = httplib.HTTPConnection(self.ipaddr+":"+self.port)
+    def __init__(self, target, auth, options, pkey):
+        self.target = settings.K8S_MASTER
+        self.port = "8080"
+        self.registry = settings.REGISTRY_HOST+":"+settings.REGISTRY_PORT
+        self.apiversion = "v1beta1"
+        self.conn = httplib.HTTPConnection(self.target+":"+self.port)
 
-        # single global connection
-      def testurl(self):
+    # container api
 
-        print "hello"
-        self.conn.request('GET','/')
-        resp = self.conn.getresponse()
-        print resp.read()
-
-      def _get_pods(self):
-        self.conn.request('GET','/api/'+self.apiversion+'/'+'pods')
-        resp = self.conn.getresponse()
-        print resp.read()
-        print "headers"
-        print resp.getheaders()
-
-      def _get_pod(self,podId):
-        self.conn.request('GET','/api/'+self.apiversion+'/'+'pods/'+podId)
-        resp = self.conn.getresponse()
-        print resp.read()
-        print "headers"
-        print resp.getheaders()
-
-      def _create_pod(self,id,pod,version,name):
+    def create(self, name, image, command, **kwargs):
         l = {}
-        l["id"]=id
-        l["pod"]=pod
-        l["version"]=version
-        l["name"]=name
+        l["id"]=name
+        l["version"]=self.apiversion
+        l["image"]=self.registry+"/"+image
         template=string.Template(POD_TEMPLATE).substitute(l)
         headers = {'Content-Type': 'application/json'}
         #http://172.17.8.100:8080/api/v1beta1/pods
@@ -138,8 +58,38 @@ class KubeHTTPClient():
         data = resp.read()
         print data
 
+    def start(self, name):
+        """
+        Start a container
+        """
+        return
 
+    def stop(self, name):
+        """
+        Stop a container
+        """
+        return
 
-j=KubeHTTPClient("172.17.8.101","8080","v1beta1")
-j._get_pods()
-#j._create_pod("redis","Pod","v1beta3","redis-jaffa")
+    def destroy(self, name):
+        """
+        Destroy a container
+        """
+        return
+
+    def run(self, name, image, entrypoint, command):
+        """
+        Run a one-off command
+        """
+        # dump input into a json object for testing purposes
+        return 0, json.dumps({'name': name,
+                              'image': image,
+                              'entrypoint': entrypoint,
+                              'command': command})
+
+    def attach(self, name):
+        """
+        Attach to a job's stdin, stdout and stderr
+        """
+        return StringIO(), StringIO(), StringIO()
+
+SchedulerClient = KubeHTTPClient
