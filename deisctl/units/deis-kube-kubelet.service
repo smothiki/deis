@@ -4,7 +4,7 @@ Documentation=https://github.com/GoogleCloudPlatform/kubernetes
 
 [Service]
 EnvironmentFile=/etc/environment
-ExecStartPre=/bin/bash -c '/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/$(curl --insecure -sS https://get.k8s.io | grep release= | cut -f2 -d"=")/bin/linux/amd64/kubelet'
+ExecStartPre=/bin/bash -c '/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v0.11.0/bin/linux/amd64/kubelet'
 ExecStartPre=/usr/bin/chmod +x /opt/bin/kubelet
 ExecStart=/bin/bash -c '/opt/bin/kubelet --address=0.0.0.0 --port=10250 --hostname_override=$COREOS_PRIVATE_IPV4 --api_servers=`/usr/bin/etcdctl get /deis/scheduler/k8s/master`:8080 --logtostderr=true'
 Restart=always
