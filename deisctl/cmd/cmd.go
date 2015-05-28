@@ -24,6 +24,7 @@ const (
 	PlatformCommand string = "platform"
 	swarm           string = "swarm"
 	k8s 						string = "k8s"
+	mesos           string = "mesos"
 )
 
 // ListUnits prints a list of installed units.
@@ -75,6 +76,8 @@ func Start(targets []string, b backend.Backend) error {
 		}
 		if targets[0] == k8s {
 			return StartK8s(b)
+		if targets[0] == mesos {
+			return StartMesos(b)
 		}
 	}
 	outchan := make(chan string)
@@ -168,6 +171,8 @@ func Stop(targets []string, b backend.Backend) error {
 		}
 		if targets[0] == k8s {
 			return StopK8s(b)
+		if targets[0] == mesos {
+			return StopMesos(b)
 		}
 	}
 
@@ -261,6 +266,8 @@ func Install(targets []string, b backend.Backend, checkKeys func() error) error 
 		}
 		if targets[0] == k8s {
 			return InstallK8s(b)
+		if targets[0] == mesos {
+			return InstallMesos(b)
 		}
 	}
 	outchan := make(chan string)
@@ -314,6 +321,8 @@ func Uninstall(targets []string, b backend.Backend) error {
 		}
 		if targets[0] == k8s {
 			return UnInstallK8s(b)
+		if targets[0] == mesos {
+			return UninstallMesos(b)
 		}
 	}
 
