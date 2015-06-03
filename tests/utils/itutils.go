@@ -311,18 +311,18 @@ func AppsDestroyTest(t *testing.T, params *DeisTestConfig) {
 func GetRandomApp() string {
 	rand.Seed(int64(time.Now().Unix()))
 	apps := []string{
-		"example-clojure-ring",
+		//"example-clojure-ring",
 		// "example-dart",
-		"example-dockerfile-python",
-		"example-go",
-		"example-java-jetty",
-		"example-nodejs-express",
+		//"example-dockerfile-python",
+		//"example-go",
+		//"example-java-jetty",
+		//"example-nodejs-express",
 		// "example-php",
-		"example-play",
-		"example-python-django",
-		"example-python-flask",
-		"example-ruby-sinatra",
-		"example-scala",
+		//"example-play",
+		//"example-python-django",
+		//"example-python-flask",
+		//"example-ruby-sinatra",
+		//"example-scala",
 		"example-dockerfile-http",
 	}
 	return apps[rand.Intn(len(apps))]

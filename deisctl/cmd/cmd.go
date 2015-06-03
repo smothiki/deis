@@ -22,9 +22,14 @@ import (
 const (
 	// PlatformCommand is shorthand for "all the Deis components."
 	PlatformCommand string = "platform"
+<<<<<<< HEAD
 	// StatelessPlatformCommand is shorthand for the components except store-*, database, and logger.
 	StatelessPlatformCommand string = "stateless-platform"
 	swarm                    string = "swarm"
+=======
+	swarm           string = "swarm"
+	k8s 						string = "k8s"
+>>>>>>> feat(k8s):initial setup
 )
 
 // ListUnits prints a list of installed units.
@@ -74,6 +79,9 @@ func Start(targets []string, b backend.Backend) error {
 			return StartPlatform(b, true)
 		} else if targets[0] == swarm {
 			return StartSwarm(b)
+		}
+		if targets[0] == k8s {
+			return StartK8s(b)
 		}
 	}
 	outchan := make(chan string)
@@ -181,6 +189,9 @@ func Stop(targets []string, b backend.Backend) error {
 		} else if targets[0] == swarm {
 			return StopSwarm(b)
 		}
+		if targets[0] == k8s {
+			return StopK8s(b)
+		}
 	}
 
 	outchan := make(chan string)
@@ -283,6 +294,9 @@ func Install(targets []string, b backend.Backend, checkKeys func() error) error 
 		} else if targets[0] == swarm {
 			return InstallSwarm(b)
 		}
+		if targets[0] == k8s {
+			return InstallK8s(b)
+		}
 	}
 	outchan := make(chan string)
 	errchan := make(chan error)
@@ -343,6 +357,9 @@ func Uninstall(targets []string, b backend.Backend) error {
 			return UninstallPlatform(b, true)
 		} else if targets[0] == swarm {
 			return UnInstallSwarm(b)
+		}
+		if targets[0] == k8s {
+			return UnInstallK8s(b)
 		}
 	}
 
