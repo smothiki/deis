@@ -23,6 +23,7 @@ const (
 	// PlatformCommand is shorthand for "all the Deis components."
 	PlatformCommand string = "platform"
 	swarm           string = "swarm"
+	k8s 						string = "k8s"
 )
 
 // ListUnits prints a list of installed units.
@@ -71,6 +72,9 @@ func Start(targets []string, b backend.Backend) error {
 		}
 		if targets[0] == swarm {
 			return StartSwarm(b)
+		}
+		if targets[0] == k8s {
+			return StartK8s(b)
 		}
 	}
 	outchan := make(chan string)
@@ -162,6 +166,9 @@ func Stop(targets []string, b backend.Backend) error {
 		if targets[0] == swarm {
 			return StopSwarm(b)
 		}
+		if targets[0] == k8s {
+			return StopK8s(b)
+		}
 	}
 
 	outchan := make(chan string)
@@ -252,6 +259,9 @@ func Install(targets []string, b backend.Backend, checkKeys func() error) error 
 		if targets[0] == swarm {
 			return InstallSwarm(b)
 		}
+		if targets[0] == k8s {
+			return InstallK8s(b)
+		}
 	}
 	outchan := make(chan string)
 	errchan := make(chan error)
@@ -301,6 +311,9 @@ func Uninstall(targets []string, b backend.Backend) error {
 		}
 		if targets[0] == swarm {
 			return UnInstallSwarm(b)
+		}
+		if targets[0] == k8s {
+			return UnInstallK8s(b)
 		}
 	}
 

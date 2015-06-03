@@ -255,8 +255,17 @@ class App(UuidAuditedModel):
             changed = True
             while diff < 0:
                 c = containers.pop()
-                to_remove.append(c)
+                if settings.SCHEDULER_MODULE == "scheduler.k8s" :
+                    if len(containers) == 0:
+                        t = Thread(target=c.scale)
+                        t.start()
+                        t.join()
+                    c.delete()
+                else:
+                    to_remove.append(c)
                 diff += 1
+            if diff == 0 and len(containers) != 0:
+                self._start_containers([containers.pop()])
             while diff > 0:
                 # create a database record
                 c = Container.objects.create(owner=self.owner,
@@ -269,7 +278,10 @@ class App(UuidAuditedModel):
                 diff -= 1
         if changed:
             if to_add:
-                self._start_containers(to_add)
+                if settings.SCHEDULER_MODULE == "scheduler.k8s" :
+                    self._start_containers([to_add.pop()])
+                else:
+                    self._start_containers(to_add)
             if to_remove:
                 self._destroy_containers(to_remove)
         # save new structure to the database
@@ -289,15 +301,15 @@ class App(UuidAuditedModel):
         start_threads = [Thread(target=c.start) for c in to_add]
         [t.start() for t in create_threads]
         [t.join() for t in create_threads]
-        if any(c.state != 'created' for c in to_add):
-            err = 'aborting, failed to create some containers'
+        if settings.SCHEDULER_MODULE != "scheduler.k8s" and any(c.state != 'created' for c in to_add):
+            err = 'aborting, failed to create some containers '+c.state
             log_event(self, err, logging.ERROR)
             self._destroy_containers(to_add)
             raise RuntimeError(err)
         [t.start() for t in start_threads]
         [t.join() for t in start_threads]
         if set([c.state for c in to_add]) != set(['up']):
-            err = 'warning, some containers failed to start'
+            err = 'warning, some containers failed to start'+c.state
             log_event(self, err, logging.WARNING)
 
     def _restart_containers(self, to_restart):
@@ -326,24 +338,31 @@ class App(UuidAuditedModel):
         [t.join() for t in destroy_threads]
         [c.delete() for c in to_destroy if c.state == 'destroyed']
         if any(c.state != 'destroyed' for c in to_destroy):
-            err = 'aborting, failed to destroy some containers'
+            err = 'aborting, failed to destroy some containers'+c.state
             log_event(self, err, logging.ERROR)
             raise RuntimeError(err)
 
     def deploy(self, user, release):
         """Deploy a new release to this application"""
         existing = self.container_set.exclude(type='run')
+        k8s_exist = []
         new = []
         for e in existing:
+            k8s_exist.append(e)
             n = e.clone(release)
             n.save()
             new.append(n)
+            if settings.SCHEDULER_MODULE == "scheduler.k8s" :
+                break
 
         self._start_containers(new)
 
         # destroy old containers
         if existing:
-            self._destroy_containers(existing)
+            if settings.SCHEDULER_MODULE == "scheduler.k8s" :
+                self._destroy_containers(k8s_exist)
+            else:
+                self._destroy_containers(existing)
 
         # perform default scaling if necessary
         if self.structure == {} and release.build is not None:
@@ -482,7 +501,9 @@ class Container(UuidAuditedModel):
         image = self.release.image
         kwargs = {'memory': self.release.config.memory,
                   'cpu': self.release.config.cpu,
-                  'tags': self.release.config.tags}
+                  'tags': self.release.config.tags,
+                  'aname': self.app.id,
+                  'num': self.num}
         job_id = self._job_id
         try:
             self._scheduler.create(
@@ -492,6 +513,20 @@ class Container(UuidAuditedModel):
                 **kwargs)
         except Exception as e:
             err = '{} (create): {}'.format(job_id, e)
+            log_event(self.app, err, logging.ERROR)
+            raise
+
+    @close_db_connections
+    def scale(self):
+        image = self.release.image
+        job_id = self._job_id
+        try:
+            self._scheduler.scale(
+                name=job_id,
+                image=image,
+                num=0)
+        except Exception as e:
+            err = '{} (scale): {}'.format(job_id, e)
             log_event(self.app, err, logging.ERROR)
             raise
 
