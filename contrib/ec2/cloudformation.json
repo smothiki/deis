@@ -1,6 +1,14 @@
 [
     {
         "ParameterKey":     "KeyPair",
-        "ParameterValue":   "deis"
+        "ParameterValue":   "sndeis"
+    },
+    {
+        "ParameterKey":     "InstanceType",
+        "ParameterValue":   "m3.xlarge"
+    },
+    {
+        "ParameterKey":     "EC2VirtualizationType",
+        "ParameterValue":   "PV"
     }
 ]

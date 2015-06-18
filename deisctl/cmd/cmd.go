@@ -23,7 +23,7 @@ const (
 	// PlatformCommand is shorthand for "all the Deis components."
 	PlatformCommand string = "platform"
 	swarm           string = "swarm"
-	k8s 						string = "k8s"
+	k8s             string = "k8s"
 	mesos           string = "mesos"
 )
 
@@ -76,10 +76,12 @@ func Start(targets []string, b backend.Backend) error {
 		}
 		if targets[0] == k8s {
 			return StartK8s(b)
+		}
 		if targets[0] == mesos {
 			return StartMesos(b)
 		}
 	}
+
 	outchan := make(chan string)
 	errchan := make(chan error)
 	var wg sync.WaitGroup
@@ -98,13 +100,12 @@ func Start(targets []string, b backend.Backend) error {
 func CheckRequiredKeys() error {
 	if err := config.CheckConfig("/deis/platform/", "domain"); err != nil {
 		return fmt.Errorf(`Missing platform domain, use:
-deisctl config platform set domain=<your-domain>`)
+			deisctl config platform set domain=<your-domain>`)
 	}
 
 	if err := config.CheckConfig("/deis/platform/", "sshPrivateKey"); err != nil {
 		fmt.Printf(`Warning: Missing sshPrivateKey, "deis run" will be unavailable. Use:
-deisctl config platform set sshPrivateKey=<path-to-key>
-`)
+			deisctl config platform set sshPrivateKey=<path-to-key>`)
 	}
 	return nil
 }
@@ -171,6 +172,7 @@ func Stop(targets []string, b backend.Backend) error {
 		}
 		if targets[0] == k8s {
 			return StopK8s(b)
+		}
 		if targets[0] == mesos {
 			return StopMesos(b)
 		}
@@ -266,10 +268,12 @@ func Install(targets []string, b backend.Backend, checkKeys func() error) error 
 		}
 		if targets[0] == k8s {
 			return InstallK8s(b)
+		}
 		if targets[0] == mesos {
 			return InstallMesos(b)
 		}
 	}
+
 	outchan := make(chan string)
 	errchan := make(chan error)
 	var wg sync.WaitGroup
@@ -321,6 +325,7 @@ func Uninstall(targets []string, b backend.Backend) error {
 		}
 		if targets[0] == k8s {
 			return UnInstallK8s(b)
+		}
 		if targets[0] == mesos {
 			return UninstallMesos(b)
 		}

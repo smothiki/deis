@@ -241,6 +241,8 @@ class KubeHTTPClient():
         l['num'] =  num
         template=string.Template(RC_TEMPLATE).substitute(l)
         js_template = json.loads(template)
+        args= command.split()
+        js_template["spec"]["template"]["spec"]["containers"][0]['args'] = args
         loc = locals().copy()
         loc.update(re.match(MATCH, name).groupdict())
         mem = kwargs.get('memory', {}).get(loc['c_type'])
