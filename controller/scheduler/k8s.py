@@ -33,7 +33,7 @@ RC_TEMPLATE = '''{
    "kind":"ReplicationController",
    "apiVersion":"$version",
    "metadata":{
-      "name":"$id",
+      "name":"$name",
       "labels":{
          "name":"$id"
       }
@@ -41,12 +41,14 @@ RC_TEMPLATE = '''{
    "spec":{
       "replicas":$num,
       "selector":{
-         "name":"$id"
+         "name":"$id",
+         "version":"$appversion"
       },
       "template":{
          "metadata":{
             "labels":{
-               "name":"$id"
+               "name":"$id",
+               "version":"$appversion"
             }
          },
          "spec":{
@@ -63,7 +65,7 @@ RC_TEMPLATE = '''{
 
 SERVICE_TEMPLATE = '''{
    "kind":"Service",
-   "apiVersion":"v1beta3",
+   "apiVersion":"$version",
    "metadata":{
       "name":"$label",
       "labels":{
@@ -73,7 +75,7 @@ SERVICE_TEMPLATE = '''{
    "spec":{
       "ports": [
         {
-          "port":$port,
+          "port":80,
           "targetPort":$port,
           "protocol":"TCP"
         }
@@ -130,7 +132,7 @@ class KubeHTTPClient():
         self.target = settings.K8S_MASTER
         self.port = "8080"
         self.registry = settings.REGISTRY_HOST+":"+settings.REGISTRY_PORT
-        self.apiversion = "v1beta3"
+        self.apiversion = "v1"
         self.conn = httplib.HTTPConnection(self.target+":"+self.port)
         #self.container_state = ""
 
@@ -161,7 +163,7 @@ class KubeHTTPClient():
             return 1
 
 
-    def _get_rc(self,name):
+    def _get_rc_status(self,name):
       conn_rc = httplib.HTTPConnection(self.target+":"+self.port)
       conn_rc.request('GET','/api/'+self.apiversion+'/'+'namespaces/default/replicationcontrollers/'+name)
       resp = conn_rc.getresponse()
@@ -169,7 +171,7 @@ class KubeHTTPClient():
       conn_rc.close()
       return status
 
-    def _get_rc_resver(self,name):
+    def _get_rc_(self,name):
       conn_rc_resver = httplib.HTTPConnection(self.target+":"+self.port)
       conn_rc_resver.request('GET','/api/'+self.apiversion+'/'+'namespaces/default/replicationcontrollers/'+name)
       resp = conn_rc_resver.getresponse()
@@ -182,35 +184,46 @@ class KubeHTTPClient():
               name,status, reason, data)
           raise RuntimeError(errmsg)
       parsed_json =  json.loads(data)
-      return parsed_json['metadata']['resourceVersion']
+      return parsed_json
 
-    def _get_rc_currrep(self,name):
-      conn_rc_currrep = httplib.HTTPConnection(self.target+":"+self.port)
-      conn_rc_currrep.request('GET','/api/'+self.apiversion+'/'+'namespaces/default/replicationcontrollers/'+name)
-      resp = conn_rc_currrep.getresponse()
-      data = resp.read()
-      reason = resp.reason
-      status = resp.status
-      conn_rc_currrep.close()
-      if not 200 <= status <= 299:
-          errmsg = "Failed to get Replication Controller:{} {} {} - {}".format(
-              name,status, reason, data)
-          raise RuntimeError(errmsg)
-      parsed_json =  json.loads(data)
-      return parsed_json['spec']['replicas']
+    def deploy(self, name, image, command, **kwargs):
+        exist_rc = kwargs.get('old_app', {})
+        try:
+            self._create_rc(name, image, command, **kwargs)
+        except Exception as e:
+            err = '{} (deploy): {}'.format(name, e)
+            log_event(self, err, logging.ERROR)
+            raise
+        exist_rc = exist_rc.split(".")[0]
+        exist_rc = exist_rc.replace("_","-")
+        self._delete_rc(exist_rc)
+        status,data,reason = self._get_pods()
+        parsed_json =  json.loads(data)
+        for pod in parsed_json['items']:
+            if 'generateName' in pod['metadata'] and pod['metadata']['generateName'] == exist_rc+'-':
+                self._delete_pod(pod['metadata']['name'])
 
-    def scale(self,name,image,num,args):
+    def scale(self, name, image, command, **kwargs):
       l = {}
       name = name.split(".")[0]
       name = name.replace("_","-")
+      if not 200 <= self._get_rc_status(name) <= 299 :
+          self.create(name, image, command, **kwargs)
+          return
+      num = kwargs.get('num', {})
+
+      '''args= command.split()
       l["id"]=name
       l["version"]=self.apiversion
       l["image"]=self.registry+"/"+image
       l["num"] = num
-      l["resver"] = self._get_rc_resver(name)
+      l["resver"] = self._get_rc_(name)['metadata']['resourceVersion']
       template=string.Template(RC_TEMPLATE1).substitute(l)
       js_template = json.loads(template)
-      js_template["spec"]["template"]["spec"]["containers"][0]['args'] = args
+      js_template["spec"]["template"]["spec"]["containers"][0]['args'] = args'''
+
+      js_template = self._get_rc_(name)
+      js_template["spec"]["replicas"]= num
       headers = {'Content-Type': 'application/json'}
       conn_scalepod = httplib.HTTPConnection(self.target+":"+self.port)
       conn_scalepod.request('PUT', '/api/'+self.apiversion+'/namespaces/default/replicationcontrollers/'+name,
@@ -231,23 +244,20 @@ class KubeHTTPClient():
           for pod in parsed_json['items']:
               if pod['metadata']['generateName'] == name+'-' and pod['status']['phase'] == 'Running':
                   count += 1
-          if count == num
+          if count == num:
               break
           time.sleep(1)
 
-    def create(self, name, image, command, **kwargs):
-        #self.container_state = "create"
+    def _create_rc(self, name, image, command, **kwargs):
         name = name.split(".")[0]
         name = name.replace("_","-")
         args= command.split()
-        if self._get_rc(name) == 200 :
-            self.scale(name, image,kwargs.get('num', {}),args)
-            return
         app_name = kwargs.get('aname', {})
-        num = self._get_replica_app(app_name)
+        num = kwargs.get('num', {})
         l = {}
-
-        l["id"]=name
+        l["name"]= name
+        l["id"]= app_name
+        l["appversion"] = kwargs.get('version', {})
         l["version"]=self.apiversion
         l["image"]=self.registry+"/"+image
         l['num'] =  num
@@ -280,8 +290,14 @@ class KubeHTTPClient():
             errmsg = "Failed to create Replication Controller:{} {} {} - {}".format(
                 name,status, reason, data)
             raise RuntimeError(errmsg)
-        else:
-            self._create_service(l["id"],app_name)
+
+    def create(self, name, image, command, **kwargs):
+        #self.container_state = "create"
+        self._create_rc(name, image, command, **kwargs)
+        name = name.split(".")[0]
+        name = name.replace("_","-")
+        app_name = kwargs.get('aname', {})
+        self._create_service(name , app_name)
 
     def _create_service(self,name,app_name):
       actual_pod = {}
@@ -297,11 +313,12 @@ class KubeHTTPClient():
           time.sleep(1)
 
       container_id = actual_pod['status']['containerStatuses'][0]['containerID'].split("//")[1]
-      ip = actual_pod['spec']['host']
+      ip = actual_pod['status']['hostIP']
       docker_cli = Client("tcp://{}:2375".format(ip),timeout=1200, version='1.17')
       port = int(docker_cli.inspect_container(container_id)['Config']['ExposedPorts'].keys()[0].split("/")[0])
       l = {}
-      l["label"] =name
+      l["version"]=self.apiversion
+      l["label"] =app_name
       l["port"] = port
       template=string.Template(SERVICE_TEMPLATE).substitute(l)
       headers = {'Content-Type': 'application/json'}
@@ -317,11 +334,11 @@ class KubeHTTPClient():
           errmsg = "Failed to create Service:{} {} {} - {}".format(
               name,status, reason, data)
           raise RuntimeError(errmsg)
-      else :
+      '''else :
           parsed_json =  json.loads(data)
-          serv_ip = parsed_json['spec']['portalIP']+':'+str(parsed_json['spec']['ports'][0]['port'])
+          serv_ip = parsed_json['spec']['clusterIP']+':'+str(parsed_json['spec']['ports'][0]['port'])
           client = etcd.Client(host=os.environ.get('HOST'), port=4001)
-          client.write('/deis/services/'+app_name+'/'+name, serv_ip)
+          client.write('/deis/services/'+app_name+'/'+name, serv_ip)'''
 
 
     def start(self, name):
@@ -337,12 +354,7 @@ class KubeHTTPClient():
         """
         return
 
-    def destroy(self, name):
-        """
-        Destroy a container
-        """
-        name = name.split(".")[0]
-        name = name.replace("_","-")
+    def _delete_rc(self,name):
         headers = {'Content-Type': 'application/json'}
         con_dest = httplib.HTTPConnection(self.target+":"+self.port)
         con_dest.request('DELETE','/api/'+self.apiversion+'/namespaces/default/replicationcontrollers/'+name,headers=headers,body=POD_DELETE)
@@ -356,8 +368,32 @@ class KubeHTTPClient():
                 name,status, reason, data)
             raise RuntimeError(errmsg)
 
+    def destroy(self, name):
+        """
+        Destroy a container
+        """
+        name = name.split(".")[0]
+        name = name.replace("_","-")
+
+        appname = self._get_rc_(name)["metadata"]["labels"]["name"]
+
+        headers = {'Content-Type': 'application/json'}
+        con_dest = httplib.HTTPConnection(self.target+":"+self.port)
+        con_dest.request('DELETE','/api/'+self.apiversion+'/namespaces/default/replicationcontrollers/'+name,headers=headers,body=POD_DELETE)
+        resp = con_dest.getresponse()
+        reason = resp.reason
+        status = resp.status
+        data = resp.read()
+        con_dest.close()
+        if status == 404:
+            return
+        if not 200 <= status <= 299:
+            errmsg = "Failed to delete Replication Controller:{} {} {} - {}".format(
+                name,status, reason, data)
+            raise RuntimeError(errmsg)
+
         con_serv = httplib.HTTPConnection(self.target+":"+self.port)
-        con_serv.request('DELETE','/api/'+self.apiversion+'/namespaces/default/services/'+name)
+        con_serv.request('DELETE','/api/'+self.apiversion+'/namespaces/default/services/'+appname)
         resp = con_serv.getresponse()
         reason = resp.reason
         status = resp.status
@@ -423,6 +459,33 @@ class KubeHTTPClient():
                 status, reason, data)
             raise RuntimeError(errmsg)
 
+    def _pod_log(self,name):
+        headers = {'Content-Type': 'application/json'}
+        conn_log = httplib.HTTPConnection(self.target+":"+self.port)
+        conn_log.request('GET', '/api/'+self.apiversion+'/namespaces/default/pods/'+name+'/log')
+        resp = conn_log.getresponse()
+        status = resp.status
+        data = resp.read()
+        reason = resp.reason
+        conn_log.close()
+        if not 200 <= status <= 299:
+            errmsg = "Failed to get the log: {} {} - {}".format(
+                status, reason, data)
+            raise RuntimeError(errmsg)
+        return (status,data,reason)
+
+    def logs(self,name):
+        name = name.split(".")[0]
+        name = name.replace("_","-")
+        status,data,reason = self._get_pods()
+        parsed_json =  json.loads(data)
+        log_data = ''
+        for pod in parsed_json['items']:
+            if name in pod['metadata']['generateName'] and pod['status']['phase'] == 'Running':
+                status,data,reason = self._pod_log(pod['metadata']['name'])
+                log_data += data
+        return log_data
+
     def run(self, name, image, entrypoint, command):
         """
         Run a one-off command
@@ -469,18 +532,7 @@ class KubeHTTPClient():
                     status, reason, data)
                 raise RuntimeError(errmsg)
             if parsed_json['status']['phase'] == 'Succeeded':
-                headers = {'Content-Type': 'application/json'}
-                conn_log = httplib.HTTPConnection(self.target+":"+self.port)
-                conn_log.request('GET', '/api/'+self.apiversion+'/namespaces/default/pods/'+name+'/log')
-                resp = conn_log.getresponse()
-                status = resp.status
-                data = resp.read()
-                reason = resp.reason
-                conn_log.close()
-                if not 200 <= status <= 299:
-                    errmsg = "Failed to get the log: {} {} - {}".format(
-                        status, reason, data)
-                    raise RuntimeError(errmsg)
+                status,data,reason = self._pod_log(name)
                 self._delete_pod(name)
                 return 0, data
             elif parsed_json['status']['phase'] == 'Failed':

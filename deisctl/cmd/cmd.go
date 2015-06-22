@@ -22,14 +22,10 @@ import (
 const (
 	// PlatformCommand is shorthand for "all the Deis components."
 	PlatformCommand string = "platform"
-<<<<<<< HEAD
 	// StatelessPlatformCommand is shorthand for the components except store-*, database, and logger.
 	StatelessPlatformCommand string = "stateless-platform"
 	swarm                    string = "swarm"
-=======
-	swarm           string = "swarm"
-	k8s 						string = "k8s"
->>>>>>> feat(k8s):initial setup
+	k8s                      string = "k8s"
 )
 
 // ListUnits prints a list of installed units.

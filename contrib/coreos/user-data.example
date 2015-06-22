@@ -70,7 +70,7 @@ coreos:
       [Service]
       EnvironmentFile=/run/flannel/subnet.env
       ExecStartPre=/bin/mount --make-rprivate /
-      ExecStart=/usr/bin/docker -d --bip=${FLANNEL_SUBNET} --mtu=${FLANNEL_MTU} --insecure-registry 10.0.0.0/8 --insecure-registry 172.16.0.0/12 --insecure-registry 192.168.0.0/16 --insecure-registry 100.64.0.0/10 --insecure-registry registry.smothiki.io:5000 -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -s=overlay --iptables=false --ip-masq=false
+      ExecStart=/usr/bin/docker -d --bip=${FLANNEL_SUBNET} --mtu=${FLANNEL_MTU} --insecure-registry 10.0.0.0/8 --insecure-registry 172.16.0.0/12 --insecure-registry 192.168.0.0/16 --insecure-registry 100.64.0.0/10 -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -s=overlay --iptables=false --ip-masq=false
       [Install]
       WantedBy=multi-user.target
   - name: stop-update-engine.service
