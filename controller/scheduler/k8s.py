@@ -73,7 +73,7 @@ SERVICE_TEMPLATE = '''{
    "spec":{
       "ports": [
         {
-          "port":$port,
+          "port":80,
           "targetPort":$port,
           "protocol":"TCP"
         }
@@ -316,11 +316,11 @@ class KubeHTTPClient():
           errmsg = "Failed to create Service:{} {} {} - {}".format(
               name,status, reason, data)
           raise RuntimeError(errmsg)
-      else :
-          parsed_json =  json.loads(data)
-          serv_ip = parsed_json['spec']['portalIP']+':'+str(parsed_json['spec']['ports'][0]['port'])
-          client = etcd.Client(host=os.environ.get('HOST'), port=4001)
-          client.write('/deis/services/'+app_name+'/'+name, serv_ip)
+    #   else :
+    #       parsed_json =  json.loads(data)
+    #       serv_ip = parsed_json['spec']['portalIP']+':'+str(parsed_json['spec']['ports'][0]['port'])
+    #       client = etcd.Client(host=os.environ.get('HOST'), port=4001)
+    #       client.write('/deis/services/'+app_name+'/'+name, serv_ip)
 
 
     def start(self, name):
