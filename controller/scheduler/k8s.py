@@ -54,7 +54,7 @@ RC_TEMPLATE = '''{
          "spec":{
             "containers":[
                {
-                  "name":"$id",
+                  "name":"$containername",
                   "image":"$image"
                }
             ]
@@ -187,9 +187,12 @@ class KubeHTTPClient():
       return parsed_json
 
     def deploy(self, name, image, command, **kwargs):
+        app_name = name.split(".")[0]
+        app_type = name.split(".")[1]
+        containername = app_name.split("_")[0]+"-"+app_type
         exist_rc = kwargs.get('old_app', {})
         try:
-            self._create_rc(name, image, command, **kwargs)
+            self._create_rc(name, image, command, containername, **kwargs)
         except Exception as e:
             err = '{} (deploy): {}'.format(name, e)
             log_event(self, err, logging.ERROR)
@@ -205,10 +208,13 @@ class KubeHTTPClient():
 
     def scale(self, name, image, command, **kwargs):
       l = {}
+      app_name = name.split(".")[0]
+      app_type = name.split(".")[1]
+      containername = app_name.split("_")[0]+"-"+app_type
       name = name.split(".")[0]
       name = name.replace("_","-")
       if not 200 <= self._get_rc_status(name) <= 299 :
-          self.create(name, image, command, **kwargs)
+          self.create(name, image, command, containername, **kwargs)
           return
       num = kwargs.get('num', {})
 
@@ -248,15 +254,16 @@ class KubeHTTPClient():
               break
           time.sleep(1)
 
-    def _create_rc(self, name, image, command, **kwargs):
+    def _create_rc(self, name, image, command, containername=None, **kwargs):
         name = name.split(".")[0]
         name = name.replace("_","-")
         args= command.split()
         app_name = kwargs.get('aname', {})
         num = kwargs.get('num', {})
         l = {}
-        l["name"]= name
-        l["id"]= app_name
+        l["name"] = name
+        l["containername"] = containername
+        l["id"] = app_name
         l["appversion"] = kwargs.get('version', {})
         l["version"]=self.apiversion
         l["image"]=self.registry+"/"+image
@@ -291,9 +298,9 @@ class KubeHTTPClient():
                 name,status, reason, data)
             raise RuntimeError(errmsg)
 
-    def create(self, name, image, command, **kwargs):
+    def create(self, name, image, command, containername=None, **kwargs):
         #self.container_state = "create"
-        self._create_rc(name, image, command, **kwargs)
+        self._create_rc(name, image, command, containername, **kwargs)
         name = name.split(".")[0]
         name = name.replace("_","-")
         app_name = kwargs.get('aname', {})
