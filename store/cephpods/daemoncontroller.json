@@ -1,0 +1,56 @@
+{
+   "kind":"ReplicationController",
+   "apiVersion":"v1",
+   "metadata":{
+      "name":"ceph-osd",
+      "labels":{
+         "name":"ceph-osd"
+      }
+   },
+   "spec":{
+      "replicas":3,
+      "selector":{
+         "name":"ceph-osd",
+         "version":"1",
+         "type":"cmd"
+      },
+      "template":{
+         "metadata":{
+            "labels":{
+               "name":"ceph-osd",
+               "version":"1",
+               "type":"cmd"
+            }
+         },
+         "spec":{
+           "containers":[
+               {
+               "name": "ceph-osd",
+               "image": "192.168.59.103:5000/deis/store-daemon:git-9d97e8e",
+               "ports":[
+                 { "containerPort": 6800}
+                   ],
+                "env":[
+                  {
+                    "name":"HOST",
+                    "value":"172.17.8.100"
+                  }
+                ],
+               "hostNetwork": true,
+               "volumeMounts": [
+                 { "name": "osdmount",
+                   "mountPath": "/var/lib/ceph/osd",
+                   "readOnly": false}
+                   ]
+               }
+             ],
+             "volumes":[
+               { "name": "osdmount",
+                 "hostPath": {
+                     "path": "/var/lib/ceph/osd"}
+               }
+             ]
+         }
+      }
+   }
+}

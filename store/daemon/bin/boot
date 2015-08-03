@@ -3,8 +3,9 @@
 
 ETCD_PORT=${ETCD_PORT:-4001}
 ETCD="$HOST:$ETCD_PORT"
+PODIP=`ifconfig eth0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
 
-HOSTNAME=`hostname`
+export HOSTNAME=`hostname`
 OSD_ID=''
 
 until etcdctl --no-sync -C $ETCD get /deis/store/monSetupComplete >/dev/null 2>&1 ; do
@@ -17,7 +18,7 @@ until confd -onetime -node $ETCD --confdir /app --log-level error; do
   sleep 5
 done
 
-if ! etcdctl --no-sync -C $ETCD get /deis/store/osds/$HOST >/dev/null 2>&1 ; then
+if ! etcdctl --no-sync -C $ETCD get /deis/store/osds/$PODIP >/dev/null 2>&1 ; then
   echo "store-daemon: creating OSD..."
 
   OSD_ID=`ceph osd create 2>/dev/null`
@@ -30,11 +31,11 @@ if ! etcdctl --no-sync -C $ETCD get /deis/store/osds/$HOST >/dev/null 2>&1 ; the
   fi
 
   echo "store-daemon: created OSD ${OSD_ID}"
-  etcdctl --no-sync -C $ETCD set /deis/store/osds/$HOST ${OSD_ID} >/dev/null
+  etcdctl --no-sync -C $ETCD set /deis/store/osds/$PODIP ${OSD_ID} >/dev/null
 fi
 
 if [ -z "${OSD_ID}" ]; then
-  OSD_ID=`etcdctl --no-sync -C $ETCD get /deis/store/osds/${HOST}`
+  OSD_ID=`etcdctl --no-sync -C $ETCD get /deis/store/osds/${PODIP}`
 fi
 
 # Make sure osd directory exists

@@ -95,7 +95,7 @@ release:
 	docker push $(METADATA_IMAGE)
 	docker push $(MONITOR_IMAGE)
 
-deploy: build dev-release restart
+deploy: build dev-release 
 
 test: test-style test-unit test-functional
 

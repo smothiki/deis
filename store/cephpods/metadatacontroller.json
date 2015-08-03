@@ -1,0 +1,41 @@
+{
+   "kind":"ReplicationController",
+   "apiVersion":"v1",
+   "metadata":{
+      "name":"ceph-mds",
+      "labels":{
+         "name":"ceph-mds"
+      }
+   },
+   "spec":{
+      "replicas":3,
+      "selector":{
+         "name":"ceph-mds",
+         "version":"1",
+         "type":"cmd"
+      },
+      "template":{
+         "metadata":{
+            "labels":{
+               "name":"ceph-mds",
+               "version":"1",
+               "type":"cmd"
+            }
+         },
+         "spec":{
+           "containers":[
+               {
+               "name": "ceph-mds",
+               "image": "192.168.59.103:5000/deis/store-metadata:git-9d97e8e",
+               "env":[
+                 {
+                   "name":"HOST",
+                   "value":"172.17.8.100"
+                 }
+               ]
+               }
+             ]
+         }
+      }
+   }
+}

@@ -6,7 +6,10 @@ set -e
 ETCD_PORT=${ETCD_PORT:-4001}
 ETCD="$HOST:$ETCD_PORT"
 ETCD_PATH=${ETCD_PATH:-/deis/store}
-HOSTNAME=`hostname`
+export HOSTNAME=`hostname`
+PODIP=`ifconfig eth0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+
+etcdctl --no-sync -C $ETCD set /deis/store/hosts/$PODIP $HOSTNAME
 
 function etcd_set_default {
   set +e
@@ -48,7 +51,7 @@ if ! etcdctl --no-sync -C $ETCD get ${ETCD_PATH}/monSetupComplete >/dev/null 2>&
     etcdctl --no-sync -C $ETCD set ${ETCD_PATH}/fsid ${fsid} >/dev/null
 
     # Generate initial monitor map
-    monmaptool --create --add ${HOSTNAME} ${HOST} --fsid ${fsid} /etc/ceph/monmap
+    monmaptool --create --add ${HOSTNAME} ${PODIP} --fsid ${fsid} /etc/ceph/monmap
 
     etcdctl --no-sync -C $ETCD set ${ETCD_PATH}/monKeyring < /etc/ceph/ceph.mon.keyring >/dev/null
     etcdctl --no-sync -C $ETCD set ${ETCD_PATH}/adminKeyring < /etc/ceph/ceph.client.admin.keyring >/dev/null
@@ -89,4 +92,4 @@ if [ ! -e /var/lib/ceph/mon/ceph-${HOSTNAME}/keyring ]; then
   rm /tmp/ceph.mon.keyring
 fi
 
-exec /usr/bin/ceph-mon -d -i ${HOSTNAME} --public-addr ${HOST}:6789
+exec /usr/bin/ceph-mon -d -i ${HOSTNAME} --public-addr ${PODIP}:6789

@@ -1,0 +1,63 @@
+{
+   "kind":"ReplicationController",
+   "apiVersion":"v1",
+   "metadata":{
+      "name":"ceph-mon",
+      "labels":{
+         "name":"ceph-mon"
+      }
+   },
+   "spec":{
+      "replicas":3,
+      "selector":{
+         "name":"ceph-mon",
+         "version":"1",
+         "type":"cmd"
+      },
+      "template":{
+         "metadata":{
+            "labels":{
+               "name":"ceph-mon",
+               "version":"1",
+               "type":"cmd"
+            }
+         },
+         "spec":{
+           "containers":[
+               {
+               "name": "ceph-mon",
+               "image": "192.168.59.103:5000/deis/store-monitor:git-9d97e8e",
+               "ports":[
+                 { "name": "https",
+                   "containerPort": 6789}
+                   ],
+                "env":[
+                 {
+                   "name":"HOST",
+                    "value":"172.17.8.100"
+                  }
+                   ],
+               "volumeMounts": [
+                 { "name": "config",
+                   "mountPath": "/etc/ceph",
+                   "readOnly": false},
+                 { "name": "libceph",
+                   "mountPath": "/var/lib/ceph/mon",
+                   "readOnly": false}
+                   ]
+               }
+             ],
+             "volumes":[
+               { "name": "config",
+                 "hostPath": {
+                     "path": "/etc/ceph"}
+               },
+               { "name": "libceph",
+                 "hostPath": {
+                     "path": "/var/lib/ceph/mon"}
+               }
+             ]
+         }
+      }
+   }
+}

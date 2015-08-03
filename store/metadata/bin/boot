@@ -5,7 +5,8 @@ ETCD_PORT=${ETCD_PORT:-4001}
 ETCD="$HOST:$ETCD_PORT"
 ETCD_PATH=${ETCD_PATH:-/deis/store}
 
-HOSTNAME=`hostname`
+
+export HOSTNAME=`hostname`
 MDS_NAME=$HOSTNAME
 
 until confd -onetime -node $ETCD --confdir /app --log-level error; do

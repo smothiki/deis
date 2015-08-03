@@ -13,14 +13,17 @@ set -eo pipefail
 export ETCD_PORT=${ETCD_PORT:-4001}
 export ETCD="$HOST:$ETCD_PORT"
 export ETCD_PATH=${ETCD_PATH:-/deis/store/gateway}
-export HOST_ETCD_PATH=${HOST_ETCD_PATH:-/deis/store/gateway/hosts/$HOST}
+PODIP=`ifconfig eth0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+export HOST_ETCD_PATH=${HOST_ETCD_PATH:-/deis/store/gateway/hosts/$PODIP}
 export ETCD_TTL=${ETCD_TTL:-20}
+export HOSTNAME=`hostname -s`
 
 # wait for etcd to be available
 until etcdctl --no-sync -C $ETCD ls >/dev/null 2>&1; do
     echo "waiting for etcd at $ETCD..."
     sleep $(($ETCD_TTL/2))  # sleep for half the TTL
 done
+
 
 # wait until etcd has discarded potentially stale values
 sleep $(($ETCD_TTL+1))
@@ -30,6 +33,11 @@ until confd -onetime -node $ETCD --confdir /app --log-level error; do
     echo "store-gateway: waiting for confd to write initial templates..."
     sleep $(($ETCD_TTL/2))  # sleep for half the TTL
 done
+
+echo "[client.radosgw.gateway]" >> /etc/ceph/ceph.conf
+echo "host = $HOSTNAME" >> /etc/ceph/ceph.conf
+echo "keyring = /etc/ceph/ceph.client.radosgw.keyring"  >> /etc/ceph/ceph.conf
+echo "rgw socket path = /var/run/ceph/ceph.radosgw.gateway.fastcgi.sock"  >> /etc/ceph/ceph.conf
 
 # we generate a key for the gateway. we can do this because we have the client key templated out
 if ! etcdctl --no-sync -C $ETCD get /deis/store/gatewayKeyring >/dev/null 2>&1 ; then
@@ -69,7 +77,6 @@ trap on_exit INT TERM
 # spawn confd in the background to update services based on etcd changes
 confd -node $ETCD --confdir /app --log-level error --interval 5 &
 CONFD_PID=$!
-
 echo deis-store-gateway running...
 
 # publish the service to etcd using the injected EXTERNAL_PORT
@@ -82,17 +89,17 @@ if [[ ! -z $EXTERNAL_PORT ]]; then
   set +e
 
   # wait for the service to become available on PUBLISH port
-  sleep 1 && while [[ -z $(netstat -lnt | awk "\$6 == \"LISTEN\" && \$4 ~ \".$PUBLISH\" && \$1 ~ \"$PROTO.?\"") ]] ; do sleep 1; done
+  sleep 1 && while [[ -z $(netstat -lnt | awk "\$6 == \"LISTEN\" && \$4 ~ \".$PORT\" && \$1 ~ \"$PROTO.?\"") ]] ; do sleep 1; done
 
   # while the port is listening, publish to etcd
-  while [[ ! -z $(netstat -lnt | awk "\$6 == \"LISTEN\" && \$4 ~ \".$PUBLISH\" && \$1 ~ \"$PROTO.?\"") ]] ; do
-    if etcdctl --no-sync -C $ETCD mk ${ETCD_PATH}/masterLock $HOST --ttl $ETCD_TTL >/dev/null 2>&1 \
-    || [[ `etcdctl --no-sync -C $ETCD get ${ETCD_PATH}/masterLock` == "$HOST" ]] ; then
-      etcdctl --no-sync -C $ETCD set $ETCD_PATH/host $HOST --ttl $ETCD_TTL >/dev/null
+  while [[ ! -z $(netstat -lnt | awk "\$6 == \"LISTEN\" && \$4 ~ \".$PORT\" && \$1 ~ \"$PROTO.?\"") ]] ; do
+    if etcdctl --no-sync -C $ETCD mk ${ETCD_PATH}/masterLock $PODIP --ttl $ETCD_TTL >/dev/null 2>&1 \
+    || [[ `etcdctl --no-sync -C $ETCD get ${ETCD_PATH}/masterLock` == "$PODIP" ]] ; then
+      etcdctl --no-sync -C $ETCD set $ETCD_PATH/host $PODIP --ttl $ETCD_TTL >/dev/null
       etcdctl --no-sync -C $ETCD set $ETCD_PATH/port $EXTERNAL_PORT --ttl $ETCD_TTL >/dev/null
-      etcdctl --no-sync -C $ETCD update ${ETCD_PATH}/masterLock $HOST --ttl $ETCD_TTL >/dev/null
+      etcdctl --no-sync -C $ETCD update ${ETCD_PATH}/masterLock $PODIP --ttl $ETCD_TTL >/dev/null
     fi
-    etcdctl --no-sync -C $ETCD set $HOST_ETCD_PATH/host $HOST --ttl $ETCD_TTL >/dev/null
+    etcdctl --no-sync -C $ETCD set $HOST_ETCD_PATH/host $PODIP --ttl $ETCD_TTL >/dev/null
     etcdctl --no-sync -C $ETCD set $HOST_ETCD_PATH/port $EXTERNAL_PORT --ttl $ETCD_TTL >/dev/null
     sleep $(($ETCD_TTL/2)) # sleep for half the TTL
   done

@@ -1,0 +1,22 @@
+{
+   "kind":"Service",
+   "apiVersion":"v1",
+   "metadata":{
+      "name":"ceph-gtw",
+      "labels":{
+         "name":"ceph-gtw"
+      }
+   },
+   "spec":{
+      "ports": [
+        {
+          "port":8888,
+          "targetPort":8888,
+          "protocol":"TCP"
+        }
+      ],
+      "selector":{
+         "name":"ceph-gtw"
+      }
+   }
+}
