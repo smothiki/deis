@@ -19,6 +19,10 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 
 	"github.com/deis/deis/router/logger"
+	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/client"
+	"k8s.io/kubernetes/pkg/fields"
+	"k8s.io/kubernetes/pkg/labels"
 )
 
 var log = logrus.New()
@@ -85,7 +89,11 @@ func main() {
 	go launchConfd(host + ":" + etcdPort)
 
 	//go publishService(client, hostEtcdPath, host, externalPort, uint64(ttl.Seconds()))
+<<<<<<< HEAD
 	go publishApps(client, uint64(ttl.Seconds()))
+=======
+	go publishApps()
+>>>>>>> publish the apps into router
 
 	log.Info("deis-router running...")
 
@@ -95,6 +103,7 @@ func main() {
 	<-exitChan
 }
 
+<<<<<<< HEAD
 func publishApps(client *etcd.Client, ttl uint64) {
 	for {
 		val := "104.154.52.204"
@@ -149,6 +158,16 @@ func publishApps(client *etcd.Client, ttl uint64) {
 			}
 		}
 		time.Sleep(timeout)
+=======
+func publishApps() {
+	apiClient, err := client.NewInCluster()
+	if err != nil {
+		log.Fatalf("could not create client: %v", err)
+	}
+	pods, err := client.Pods(api.NamespaceDefault).List(labels.Everything(), fields.Everything())
+	if err != nil {
+		log.Fatalf("could not get pods: %v", err)
+>>>>>>> publish the apps into router
 	}
 }
 
