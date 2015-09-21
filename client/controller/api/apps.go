@@ -4,6 +4,7 @@ package api
 type App struct {
 	Created string `json:"created"`
 	ID      string `json:"id"`
+	Type    string `json:"type"`
 	Owner   string `json:"owner"`
 	Updated string `json:"updated"`
 	URL     string `json:"url"`
@@ -12,7 +13,8 @@ type App struct {
 
 // AppCreateRequest is the definition of POST /v1/apps/.
 type AppCreateRequest struct {
-	ID string `json:"id,omitempty"`
+	ID   string `json:"id,omitempty"`
+	Type string `json:"apptype,omitempty"`
 }
 
 // AppUpdateRequest is the definition of POST /v1/apps/<app id>/.

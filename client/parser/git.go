@@ -48,5 +48,5 @@ Options:
 		return err
 	}
 
-	return cmd.GitRemote(safeGetValue(args, "--app"), args["--remote"].(string))
+	return cmd.GitRemote(safeGetValue(args, "--app"), "2345", args["--remote"].(string))
 }

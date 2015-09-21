@@ -171,6 +171,7 @@ class App(UuidAuditedModel):
     id = models.SlugField(max_length=64, unique=True, default=select_app_name,
                           validators=[validate_id_is_docker_compatible,
                                       validate_reserved_names])
+    type = models.CharField(max_length=128, blank=False, default="buildpack")
     structure = JSONField(default={}, blank=True, validators=[validate_app_structure])
 
     class Meta:
@@ -182,7 +183,8 @@ class App(UuidAuditedModel):
         return mod.SchedulerClient(settings.SCHEDULER_TARGET,
                                    settings.SCHEDULER_AUTH,
                                    settings.SCHEDULER_OPTIONS,
-                                   settings.SSH_PRIVATE_KEY)
+                                   settings.SSH_PRIVATE_KEY,
+                                   apptype)
 
     def __str__(self):
         return self.id

@@ -11,8 +11,8 @@ import (
 )
 
 // CreateRemote adds a git remote in the current directory.
-func CreateRemote(host, remote, appID string) error {
-	cmd := exec.Command("git", "remote", "add", remote, RemoteURL(host, appID))
+func CreateRemote(host, port, remote, appID string) error {
+	cmd := exec.Command("git", "remote", "add", remote, RemoteURL(host, port, appID))
 	stderr, err := cmd.StderrPipe()
 
 	if err != nil {
@@ -105,6 +105,6 @@ func findRemote(host string) (string, error) {
 }
 
 // RemoteURL returns the git URL of app.
-func RemoteURL(host, appID string) string {
-	return fmt.Sprintf("ssh://git@%s:2222/%s.git", host, appID)
+func RemoteURL(host, port, appID string) string {
+	return fmt.Sprintf("ssh://git@%s:%s/%s.git", host, port, appID)
 }

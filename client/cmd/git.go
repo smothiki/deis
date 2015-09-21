@@ -5,12 +5,12 @@ import (
 )
 
 // GitRemote creates a git remote for a deis app.
-func GitRemote(appID, remote string) error {
+func GitRemote(appID, port, remote string) error {
 	c, appID, err := load(appID)
 
 	if err != nil {
 		return err
 	}
 
-	return git.CreateRemote(c.ControllerURL.Host, remote, appID)
+	return git.CreateRemote(c.ControllerURL.Host, port, remote, appID)
 }
