@@ -183,8 +183,7 @@ class App(UuidAuditedModel):
         return mod.SchedulerClient(settings.SCHEDULER_TARGET,
                                    settings.SCHEDULER_AUTH,
                                    settings.SCHEDULER_OPTIONS,
-                                   settings.SSH_PRIVATE_KEY,
-                                   apptype)
+                                   settings.SSH_PRIVATE_KEY)
 
     def __str__(self):
         return self.id
@@ -267,6 +266,7 @@ class App(UuidAuditedModel):
         requested_structure = structure.copy()
         release = self.release_set.latest()
         # test for available process types
+        log_event(self, "jaffa-"+release.image, logging.INFO)
         available_process_types = release.build.procfile or {}
         for container_type in requested_structure:
             if container_type == 'cmd':
@@ -474,6 +474,8 @@ class App(UuidAuditedModel):
                 self._destroy_containers(existing)
 
         # perform default scaling if necessary
+        log_event(self, "jaffa-"+release.build.sha, logging.INFO)
+        log_event(self, "jaffa1-"+release.image, logging.INFO)
         if self.structure == {} and release.build is not None:
             self._default_scale(user, release)
 
@@ -639,7 +641,7 @@ class Container(UuidAuditedModel):
 
     @close_db_connections
     def create(self):
-        image = self.release.image
+        image = self.release.image.split(":")[0]+":git-"+self.release.build.sha
         kwargs = {'memory': self.release.config.memory,
                   'cpu': self.release.config.cpu,
                   'tags': self.release.config.tags}
@@ -740,6 +742,7 @@ class Build(UuidAuditedModel):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL)
     app = models.ForeignKey('App')
     image = models.CharField(max_length=256)
+
 
     # optional fields populated by builder
     sha = models.CharField(max_length=40, blank=True)
@@ -899,12 +902,6 @@ class Release(UuidAuditedModel):
             # update the source image to the repository we just imported
             source_image = self.app.id
             # if the image imported had a tag specified, use that tag as the source
-            if ':' in self.build.image:
-                if '/' not in self.build.image[self.build.image.rfind(':') + 1:]:
-                    source_image += self.build.image[self.build.image.rfind(':'):]
-        publish_release(source_image,
-                        self.config.values,
-                        self.image)
 
     def previous(self):
         """

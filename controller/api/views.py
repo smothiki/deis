@@ -280,6 +280,8 @@ class ContainerViewSet(AppResourceViewSet):
     def get_queryset(self, **kwargs):
         qs = super(ContainerViewSet, self).get_queryset(**kwargs)
         container_type = self.kwargs.get('type')
+        if not container_type:
+            container_type = 'web'
         if container_type:
             qs = qs.filter(type=container_type)
         else:

@@ -1,0 +1,51 @@
+{
+   "kind":"ReplicationController",
+   "apiVersion":"v1",
+   "metadata":{
+      "name":"jaffa",
+      "labels":{
+         "name":"jaffa"
+      }
+   },
+   "spec":{
+      "replicas":1,
+      "selector":{
+         "name":"jaffa",
+         "version":"v1.1",
+         "type":"web"
+      },
+      "template":{
+         "metadata":{
+            "labels":{
+               "name":"jaffa",
+               "version":"v1.1",
+               "type":"web"
+            }
+         },
+         "spec":{
+            "containers":[
+               {
+                  "name":"jaffacon",
+                  "image":"deis/slugrunner",
+                  "command": [
+              "/runner/init"
+            ],
+            "args": [
+              "start web"
+            ],
+            "env": [
+              {
+                "name": "PORT",
+                "value": "5000"
+              },
+              {
+                "name": "SLUG_URL",
+                "value": "http://172.17.8.101:3000/git/home/bamboo-nailhead:git-43d28cc6/slug"
+              }
+             ]
+           }
+           ]
+         }
+      }
+   }
+}
